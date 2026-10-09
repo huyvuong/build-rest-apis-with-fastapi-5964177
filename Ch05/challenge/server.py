@@ -8,8 +8,18 @@ import csv
 import math
 from datetime import datetime
 from io import StringIO
+from time import perf_counter
+from functools import wraps
+import logging
+from http import HTTPStatus
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%dT%H:%M:%S',
+)
 
 app = FastAPI()
 
@@ -59,8 +69,40 @@ def parse_csv(fp):
     return count, total_distance, speed
 
 
+MAX_CSV_SIZE = 5 * (1 << 20) # 5MB
+
+def timed(fn):
+    """ A decorator that logs function run time"""
+    fn_name = fn.__name__
+
+    @wraps(fn)
+    async def wrapper(*args, **kw):
+        start = perf_counter()
+        try:
+            return await fn(*args, **kw)
+        finally:
+            duration = perf_counter() - start
+            logging.info(f'[metric: {fn_name} time] %.3f', duration)
+    return wrapper
+
+
 @app.post('/run')
+@timed
 async def run_stats(request: Request):
+    if (mime_type := request.headers['content-type']) != 'text/csv':
+        logging.error(f'bad format: {mime_type}')
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_ACCEPTABLE,
+            detail='not a CSV',
+        )
+
+    if (size := int(request.headers['Content-Length'])) > MAX_CSV_SIZE:
+        logging.error(f'[run_stats] file too large: {size}')
+        raise HTTPException(
+            status_code=HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+            detail='file too large',
+        )
+    
     data = await request.body()
     fp = StringIO(data.decode())
     count, distance, speed = parse_csv(fp)
@@ -69,4 +111,6 @@ async def run_stats(request: Request):
         'distance': distance,
         'speed': speed,
     }
+    logging.info('run_stats - %s', out)
+
     return out

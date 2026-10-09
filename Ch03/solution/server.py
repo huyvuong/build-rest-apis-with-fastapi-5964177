@@ -53,14 +53,14 @@ app = FastAPI()
 
 
 class Image(Enum):
-    ubuntu = 'ubuntu:24.04'
+    ubuntu = 'ubuntu-24.04'
     debian = 'debian:bookworm'
     alpine = 'alpine:3.20'
 
 
 class VM(BaseModel):
     cpu_count: int = Field(gt=0, lt=65)
-    mem_size_gb: int = Field(ge=8, lt=1025)
+    mem_size_gb: int = Field(gt=8, lt=1025)
     image: Image
 
 
