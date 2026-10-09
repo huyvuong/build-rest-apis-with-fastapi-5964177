@@ -8,7 +8,7 @@ POST http://localhost:8000/vm/start
 }
 
 ### Stop (change ID)
-POST http://localhost:8000/vm/d498c9e0921c43d48d45247ecce8557e/stop
+POST http://localhost:8000/vm/83ef5a12c0cc41e1bddbb395e8bef5f6/stop
 
 ### CPU count too high
 POST http://localhost:8000/vm/start
